@@ -2,17 +2,8 @@ from faker import Faker
 import json
 import random
 from datetime import datetime
-from kafka import KafkaProducer
-
+import boto3
 fake = Faker()
-
-KAFKA_BROKER = "localhost:9092"
-TOPICS = ["transactions", "fraud_cases", "device_info", "ip_activity"]
-
-producer = KafkaProducer(
-    bootstrap_servers=KAFKA_BROKER,
-    value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-)
 
 def generate_transaction():
     return {
@@ -31,7 +22,7 @@ def generate_transaction():
 def generate_fraud_case():
     return {
         "fraud_id": fake.uuid4(),
-        "transaction_id": fake.uuid4(),
+        "d": fake.uuid4(),
         "user_id": random.randint(1, 1000),
         "fraud_reason": fake.sentence(),
         "fraud_detected_by": random.choice(["rule_engine", "machine_learning", "manual_review"]),
@@ -65,11 +56,17 @@ def generate_ip_activity():
         "vpn_used": random.choice([True, False]),
     }
 
-for _ in range(100):
-    producer.send("transactions", generate_transaction())
-    producer.send("fraud_cases", generate_fraud_case())
-    producer.send("device_info",generate_device_info())
-    producer.send("ip_activity",generate_ip_activity())
+kinesis_client = boto3.client("kinesis", region_name = "us-east-1")
 
-producer.flush()
-print("Streaming started to Kafka.")
+TOPICS = {"transaction":generate_transaction(), "fraudCases":generate_fraud_case(),"de": generate_device_info(),"ipActvity": generate_ip_activity()}
+
+print("Streaming started to Kinesis.")
+
+for _ in range(1000):
+    for table,data in TOPICS.items():
+        stream_name = f"fraud-project-{table}-stream"
+        response = kinesis_client.put_record(
+            StreamName = stream_name,
+            Data = json.dumps(data),
+            PartitionKey = data.get("transaction_time") if table == 'transaction' else "defaut_key")
+    print(f"Sent Record: {table}")
