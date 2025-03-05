@@ -169,3 +169,12 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+airflow-scheduler.err
+airflow-scheduler.out
+airflow-scheduler.pid
+airflow-webserver-monitor.pid
+airflow-webserver.err
+airflow-webserver.out
+airflow.cfg
+airflow.db
+webserver_config.py
